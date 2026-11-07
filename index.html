@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atmospheric Effects Simulation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #171d2b 0%, #0a0d14 100%);
+      --card-bg: rgba(22, 27, 39, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(99, 133, 194, 0.25);
+      --text-main: #f0f4fc;
+      --text-sub: #8fa0be;
+      --accent-cyan: #38bdf8;
+      --accent-coral: #f43f5e;
+      --btn-bg-snowflake: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(30, 58, 138, 0.25));
+      --btn-border-snowflake: rgba(56, 189, 248, 0.35);
+      --btn-bg-balloon: linear-gradient(135deg, rgba(244, 63, 94, 0.12), rgba(159, 18, 57, 0.25));
+      --btn-border-balloon: rgba(244, 63, 94, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      min-height: 100vh;
+      width: 100vw;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Subtle background grid & vignette for an executive formal aesthetic */
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Container for floating and falling particles */
+    #fx-canvas-container {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Executive Glassmorphic Panel */
+    .panel {
+      position: relative;
+      z-index: 20;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: 
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        0 1px 1px rgba(255, 255, 255, 0.1) inset;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 44px 52px;
+      max-width: 540px;
+      width: 90%;
+      text-align: center;
+      transition: box-shadow 0.4s ease, border-color 0.4s ease;
+    }
+
+    .panel:hover {
+      border-color: var(--card-border-glow);
+      box-shadow: 
+        0 30px 70px rgba(0, 0, 0, 0.7),
+        0 0 35px rgba(56, 189, 248, 0.08);
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.24em;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      margin-bottom: 20px;
+      background: rgba(148, 163, 184, 0.05);
+    }
+
+    .title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #ffffff;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--text-sub);
+      font-weight: 300;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      position: relative;
+      appearance: none;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      padding: 14px 28px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-snowflakes {
+      background: var(--btn-bg-snowflake);
+      border: 1px solid var(--btn-border-snowflake);
+      color: #e0f2fe;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-snowflakes:hover {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(30, 58, 138, 0.4));
+      border-color: rgba(56, 189, 248, 0.65);
+      box-shadow: 0 6px 24px rgba(56, 189, 248, 0.28);
+      transform: translateY(-2px);
+    }
+
+    .btn-balloons {
+      background: var(--btn-bg-balloon);
+      border: 1px solid var(--btn-border-balloon);
+      color: #ffe4e6;
+      box-shadow: 0 4px 16px rgba(244, 63, 94, 0.15);
+    }
+
+    .btn-balloons:hover {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(159, 18, 57, 0.4));
+      border-color: rgba(244, 63, 94, 0.65);
+      box-shadow: 0 6px 24px rgba(244, 63, 94, 0.28);
+      transform: translateY(-2px);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
+      transition: transform 0.3s ease;
+    }
+
+    .btn:hover svg {
+      transform: rotate(15deg) scale(1.1);
+    }
+
+    /* Status indicator */
+    .status-bar {
+      margin-top: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: #64748b;
+      letter-spacing: 0.05em;
+      min-height: 20px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #475569;
+      transition: background 0.3s;
+    }
+
+    .status-dot.active {
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    /* Particle Elements */
+    .snowflake-element {
+      position: absolute;
+      color: #dbeafe;
+      filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.65));
+      pointer-events: none;
+      will-change: transform, opacity;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+
+    .balloon-element {
+      position: absolute;
+      pointer-events: none;
+      will-change: transform, opacity;
+      animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes fall {
+      0% {
+        transform: translateY(-50px) translateX(0) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.95;
+      }
+      50% {
+        transform: translateY(50vh) translateX(var(--drift-x, 15px)) rotate(180deg);
+      }
+      90% {
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateY(105vh) translateX(calc(var(--drift-x, 15px) * -1)) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    @keyframes rise {
+      0% {
+        transform: translateY(105vh) translateX(0) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.95;
+      }
+      50% {
+        transform: translateY(50vh) translateX(var(--sway-x, -20px)) rotate(var(--tilt, 5deg));
+      }
+      90% {
+        opacity: 0.95;
+      }
+      100% {
+        transform: translateY(-80px) translateX(var(--sway-x-end, 15px)) rotate(calc(var(--tilt, 5deg) * -1));
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div id="fx-canvas-container"></div>
+
+  <main class="panel">
+    <div class="brand-mark">Atmospheric Control Panel</div>
+    <h1 class="title">Environmental Experience</h1>
+    <p class="subtitle">
+      Select an atmospheric mode below to initiate a synchronized 5-second particle simulation.
+    </p>
+
+    <div class="button-group">
+      <button class="btn btn-snowflakes" id="btn-snow" aria-label="Trigger Snowflakes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="22"></line>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+          <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line>
+        </svg>
+        <span>Snowflakes</span>
+      </button>
+
+      <button class="btn btn-balloons" id="btn-balloons" aria-label="Trigger Balloons">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="9" r="7"></circle>
+          <path d="M12 16v3m-2 3h4"></path>
+        </svg>
+        <span>Balloons</span>
+      </button>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">System Ready</span>
+    </div>
+  </main>
+
+  <script>
+    const container = document.getElementById('fx-canvas-container');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    let activeInterval = null;
+    let stopTimeout = null;
+
+    // Elegant snowflake SVG icon (medium size: ~26px - 34px)
+    function createSnowflakeSVG(size) {
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="22"></line>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+          <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line>
+          <polyline points="9 5 12 2 15 5"></polyline>
+          <polyline points="9 19 12 22 15 19"></polyline>
+          <polyline points="5 9 2 12 5 15"></polyline>
+          <polyline points="19 9 22 12 19 15"></polyline>
+        </svg>
+      `;
+    }
+
+    // Elegant party balloon SVG (medium size: ~36px - 46px) with string & highlight
+    const balloonColors = [
+      { body: '#e11d48', shadow: '#9f1239', string: '#f43f5e' }, // Ruby
+      { body: '#0284c7', shadow: '#0369a1', string: '#38bdf8' }, // Sapphire
+      { body: '#d97706', shadow: '#b45309', string: '#fbbf24' }, // Amber / Gold
+      { body: '#059669', shadow: '#047857', string: '#34d399' }, // Emerald
+      { body: '#7c3aed', shadow: '#6d28d9', string: '#a78bfa' }, // Violet
+      { body: '#db2777', shadow: '#be185d', string: '#f472b6' }  // Magenta
+    ];
+
+    function createBalloonSVG(width, height, color) {
+      return `
+        <svg width="${width}" height="${height}" viewBox="0 0 60 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="balloonGlow-${color.body.replace('#','')}" cx="35%" cy="30%" r="65%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+              <stop offset="30%" stop-color="${color.body}"/>
+              <stop offset="100%" stop-color="${color.shadow}"/>
+            </radialGradient>
+          </defs>
+          <!-- Balloon Oval Body -->
+          <ellipse cx="30" cy="34" rx="22" ry="28" fill="url(#balloonGlow-${color.body.replace('#','')})" />
+          <!-- Balloon Knot -->
+          <polygon points="26,62 34,62 30,58" fill="${color.shadow}" />
+          <!-- Balloon String -->
+          <path d="M 30 62 Q 24 72, 33 78 T 29 88" stroke="rgba(255,255,255,0.45)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        </svg>
+      `;
+    }
+
+    function setStatus(text, isActive) {
+      statusText.textContent = text;
+      if (isActive) {
+        statusDot.classList.add('active');
+      } else {
+        statusDot.classList.remove('active');
+      }
+    }
+
+    function startSnowflakes() {
+      // Clear previous active emission
+      if (activeInterval) clearInterval(activeInterval);
+      if (stopTimeout) clearTimeout(stopTimeout);
+
+      setStatus("Snowflakes Active (5s)", true);
+
+      const spawnSnowflake = () => {
+        const snowflake = document.createElement('div');
+        snowflake.className = 'snowflake-element';
+
+        // Medium size: 24px - 34px
+        const size = Math.floor(Math.random() * 11) + 24;
+        snowflake.innerHTML = createSnowflakeSVG(size);
+
+        const leftPos = Math.random() * 96; // 0 to 96vw
+        snowflake.style.left = `${leftPos}vw`;
+        snowflake.style.top = `-40px`;
+
+        // Drift variation
+        const drift = (Math.random() - 0.5) * 60;
+        snowflake.style.setProperty('--drift-x', `${drift}px`);
+
+        // Duration of fall
+        const animDuration = 3.2 + Math.random() * 1.5; // ~3.2 - 4.7s
+        snowflake.style.animation = `fall ${animDuration}s linear forwards`;
+
+        container.appendChild(snowflake);
+
+        setTimeout(() => {
+          snowflake.remove();
+        }, animDuration * 1000 + 500);
+      };
+
+      // Initial burst
+      for (let i = 0; i < 12; i++) {
+        setTimeout(spawnSnowflake, i * 40);
+      }
+
+      // Continuous spawning for 5 seconds
+      activeInterval = setInterval(() => {
+        spawnSnowflake();
+        if (Math.random() > 0.4) spawnSnowflake();
+      }, 100);
+
+      // Stop spawning strictly after 5 seconds (5000 ms)
+      stopTimeout = setTimeout(() => {
+        clearInterval(activeInterval);
+        activeInterval = null;
+        setStatus("Simulation Concluded", false);
+        setTimeout(() => {
+          if (!activeInterval) setStatus("System Ready", false);
+        }, 3000);
+      }, 5000);
+    }
+
+    function startBalloons() {
+      // Clear previous active emission
+      if (activeInterval) clearInterval(activeInterval);
+      if (stopTimeout) clearTimeout(stopTimeout);
+
+      setStatus("Balloons Active (5s)", true);
+
+      const spawnBalloon = () => {
+        const balloon = document.createElement('div');
+        balloon.className = 'balloon-element';
+
+        // Medium size: width ~38px - 48px, height ~57px - 72px
+        const width = Math.floor(Math.random() * 11) + 38;
+        const height = Math.round(width * 1.5);
+        const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+
+        balloon.innerHTML = createBalloonSVG(width, height, color);
+
+        const leftPos = Math.random() * 92 + 2; // 2% to 94%
+        balloon.style.left = `${leftPos}vw`;
+        balloon.style.bottom = `-80px`;
+
+        // Sway variation
+        const sway = (Math.random() - 0.5) * 70;
+        const endSway = (Math.random() - 0.5) * 80;
+        const tilt = (Math.random() - 0.5) * 20;
+
+        balloon.style.setProperty('--sway-x', `${sway}px`);
+        balloon.style.setProperty('--sway-x-end', `${endSway}px`);
+        balloon.style.setProperty('--tilt', `${tilt}deg`);
+
+        // Duration of float
+        const animDuration = 3.2 + Math.random() * 1.4; // 3.2 - 4.6s
+        balloon.style.animation = `rise ${animDuration}s cubic-bezier(0.25, 1, 0.5, 1) forwards`;
+
+        container.appendChild(balloon);
+
+        setTimeout(() => {
+          balloon.remove();
+        }, animDuration * 1000 + 500);
+      };
+
+      // Initial burst
+      for (let i = 0; i < 7; i++) {
+        setTimeout(spawnBalloon, i * 70);
+      }
+
+      // Continuous spawning for 5 seconds
+      activeInterval = setInterval(() => {
+        spawnBalloon();
+      }, 160);
+
+      // Stop spawning strictly after 5 seconds (5000 ms)
+      stopTimeout = setTimeout(() => {
+        clearInterval(activeInterval);
+        activeInterval = null;
+        setStatus("Simulation Concluded", false);
+        setTimeout(() => {
+          if (!activeInterval) setStatus("System Ready", false);
+        }, 3000);
+      }, 5000);
+    }
+
+    document.getElementById('btn-snow').addEventListener('click', startSnowflakes);
+    document.getElementById('btn-balloons').addEventListener('click', startBalloons);
+  </script>
+</body>
+</html>
